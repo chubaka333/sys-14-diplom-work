@@ -1,0 +1,62 @@
+---
+- name: prometheus-playbook
+  hosts: prth
+  become: true
+  tasks:
+    - name: Create prometheus user
+      shell:
+        cmd: useradd --no-create-home --shell /bin/false prometheus
+    - name: Download prometheus
+      get_url:
+        url: https://github.com/prometheus/prometheus/releases/download/v2.43.0/prometheus-2.43.0.linux-amd64.tar.gz
+        dest: ~/
+    - name: Unarchive prometheus
+      unarchive:
+        src: ~/prometheus-2.43.0.linux-amd64.tar.gz
+        dest: ~/
+        remote_src: yes
+    - name: Execute scripts that moves prometheus and gives permisions
+      become: yes
+      script: ~/diploma/ansible/scripts/moveprometheus.sh
+    - name: creating service for prometheus
+      become: yes
+      copy:
+        src: ~/diploma/ansible/template/prometheus.service
+        dest: /etc/systemd/system
+    - name: Apply prometheus config
+      template:
+        src: ~/diploma/ansible/template/prometheus.yml.j2
+        dest: /etc/prometheus/prometheus.yml
+    - name: Start Prometheus
+      service:
+        name: prometheus
+        state: restarted
+    - name: Enable Prometheus
+      service:
+        name: prometheus
+        enabled: yes
+
+#### Второй плейбук по установке Grafana ####
+- name: grafana-playbook
+  hosts: grfn
+  tasks:
+    - name: install libfontconfig1
+      apt:
+        name: libfontconfig1
+        state: present
+        update_cache: yes
+    - name: Download grafana
+      copy:
+        src: ~/diploma/ansible/apps/grafana-enterprise_9.4.7_amd64.deb
+        dest: ~/
+    - name: Install grafana
+      apt:
+        deb: ~/grafana-enterprise_9.4.7_amd64.deb
+    - name: Start grafana
+      service:
+        name: grafana-server
+        state: restarted
+    - name: Enable Grafana
+      service:
+        name: grafana-server
+        enabled: yes

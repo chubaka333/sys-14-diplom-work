@@ -1,0 +1,127 @@
+---
+- name: Web-Playbook
+  hosts: web
+  tasks:
+    - name: Instal nginx
+      apt:
+        name: nginx
+        state: present
+#### Сайт готово  ####
+    - name: Apply index.html template
+      template:
+        src: ~/diploma/ansible/template/index.html.j2
+        dest: /var/www/html/index.nginx-debian.html
+    - name: add IP
+      lineinfile:
+        path: /var/www/html/index.nginx-debian.html
+        insertafter: "^<h1>This PC's specs</h1>"
+        line: '<h1>IP: "{{ ansible_facts.all_ipv4_addresses }}"</h1>'
+    - name: add CPU
+      lineinfile:
+        path: /var/www/html/index.nginx-debian.html
+        insertafter: "^<h1>This PC's specs</h1>"
+        line: '<h1>CPU: "{{ ansible_processor }}"</h1>'
+    - name: add RAM
+      lineinfile:
+        path: /var/www/html/index.nginx-debian.html
+        insertafter: "^<h1>This PC's specs</h1>"
+        line: '<h1>RAM: "{{ ansible_memory_mb.real }}"</h1>'
+    - name: add Nodename
+      lineinfile:
+        path: /var/www/html/index.nginx-debian.html
+        insertafter: "^<h1>This PC's specs</h1>"
+        line: '<h1>Hostname: "{{ ansible_nodename }}"</h1>'
+
+    - name: Apply nginx config
+      template:
+        src: ~/diploma/ansible/template/nginx.conf.j2
+        dest: /etc/nginx/nginx.conf
+    - name: Start nginx, if not started
+      service:
+        name: nginx
+        state: restarted
+    - name: Enable service nginx
+      service:
+        name: nginx
+        enabled: yes
+
+#### filebeat module #### Готово
+
+    - name: Copy filebeat
+      copy:
+        src: ~/diploma/ansible/apps/filebeat-8.7.0-amd64.deb
+        dest: ~/
+    - name: install filebeat
+      become: yes
+      shell:
+        cmd: dpkg -i ~/filebeat-8.7.0-amd64.deb
+    - name: Apply filebeat config
+      template:
+        src: ~/diploma/ansible/template/filebeat.yml.j2
+        dest: /etc/filebeat/filebeat.yml
+    - name: Start filebeat
+      service:
+        name: filebeat
+        state: restarted
+    - name: Enable filebeat
+      service:
+        name: filebeat
+        enabled: yes
+
+#### Node Exporter module #### Готово
+
+    - name: Download node-exporter
+      get_url:
+        url: https://github.com/prometheus/node_exporter/releases/download/v1.5.0/node_exporter-1.5.0.linux-amd64.tar.gz
+        dest: ~/
+    - name: Unarchive node-exporter
+      unarchive:
+        src: ~/node_exporter-1.5.0.linux-amd64.tar.gz
+        dest: /opt/
+        remote_src: yes
+    - name: Create user for node-exporter
+      become: true
+      shell:
+        cmd: adduser --no-create-home --disabled-login --shell /bin/false --gecos "Node Exporter User" node_exporter
+    - name: Change righs for node-exporter folder
+      file:
+        path: /opt/node_exporter-1.5.0.linux-amd64
+        state: directory
+        recurse: yes
+        owner: node_exporter
+        group: node_exporter
+    - name: Create node-exporter service
+      become: yes
+      copy:
+        src: ~/diploma/ansible/template/node_exporter.service
+        dest: /etc/systemd/system
+    - name: Start node-exporter
+      service:
+        name: node_exporter
+        state: restarted
+    - name: Enable node-exporter
+      service:
+        name: node_exporter
+        enabled: yes
+
+#### Nginx log exporter ####
+    - name: Install nginx-log-exporter
+      apt:
+        deb: https://github.com/martin-helmich/prometheus-nginxlog-exporter/releases/download/v1.9.2/prometheus-nginxlog-exporter_1.9.2_linux_amd64.deb
+    - name: Create node-exporter service
+      become: yes
+      copy:
+        src: ~/diploma/ansible/template/nginxlog_exporter.service
+        dest: /etc/systemd/system/
+    - name: Apply Nginx-log-exporter config
+      copy:
+        src: ~/diploma/ansible/template/prometheus-nginxlog-exporter.yml
+        dest: /etc/prometheus-nginxlog-exporter.yml
+    - name: Start nginx-log-exporter
+      service:
+        name: nginxlog_exporter.service
+        state: restarted
+    - name: Enable nginx-log-exporter
+      service:
+        name: nginxlog_exporter.service
+        enabled: yes

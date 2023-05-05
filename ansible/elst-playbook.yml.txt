@@ -1,0 +1,48 @@
+---
+- name: elastic-playbook
+  hosts: elst
+  tasks:
+    - name: Copy Elasticsearch
+      copy:
+        src: ~/diploma/ansible/apps/elasticsearch-8.7.0-amd64.deb
+        dest: ~/
+    - name: Install elasticsearch
+      become: yes
+      shell:
+        cmd: dpkg -i ~/elasticsearch-8.7.0-amd64.deb
+    - name: Apply elasticsearch config
+      template:
+        src: ~/diploma/ansible/template/elasticsearch.yml.j2
+        dest: /etc/elasticsearch/elasticsearch.yml
+    - name: Start Elasticsearch
+      service:
+        name: elasticsearch
+        state: restarted
+    - name: Enable elasticsearch
+      service:
+        name: elasticsearch
+        enabled: yes
+# Второй плейбук по установке и настройки кибаны
+- name: Kibana-playbook
+  hosts: kbna
+  tasks:
+    - name: Copy Kibana
+      copy:
+        src: ~/diploma/ansible/apps/kibana-8.7.0-amd64.deb
+        dest: ~/
+    - name: Instal Kibana
+      become: yes
+      shell:
+        cmd: dpkg -i ~/kibana-8.7.0-amd64.deb
+    - name: Apply kibana config
+      template:
+        src: ~/diploma/ansible/template/kibana.yml.j2
+        dest: /etc/kibana/kibana.yml
+    - name: Start Kibana
+      service:
+        name: kibana
+        state: restarted
+    - name: Enable kibana
+      service:
+        name: kibana
+        enabled: yes

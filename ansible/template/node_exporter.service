@@ -1,0 +1,13 @@
+[Unit]
+Description=Node Exporter
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=node_exporter
+Group=node_exporter
+Type=simple
+ExecStart=/opt/node_exporter-1.5.0.linux-amd64/node_exporter --web.listen-address=":9100"
+
+[Install]
+WantedBy=multi-user.target
